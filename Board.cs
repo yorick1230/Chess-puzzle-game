@@ -18,19 +18,6 @@ public class Board : MonoBehaviour
     private const float TILE_SIZE = 1.0f;
     private const float TILE_OFFSET = 0.5f;
 
-    // Ik kon geen API vinden voor schaakpuzzels vandaar dat ik hier een paar puzzels heb gehardcode om het spel te demonstreren.
-    // parameters: FEN, isWhiteTurn, Moves
-    private readonly Puzzle[] FEN_PUZZLES = {
-        new Puzzle("1Q6/3rq1k1/p7/2p2pp1/4p3/P3P1P1/4bPN1/1R4K1 w - - 4 39", 
-            true, 
-            new string[]{ "b8b2", "e7f6", "b2e2", "f6c6"}),
-        new Puzzle("5R2/1b4b1/p1q3pk/1pp3N1/3p4/P1PPr3/BPRQ2PP/7K b - - 0 29",
-            false,
-            new string[]{"c6g2", "d2g2", "e3e1", "f8f1", "e1f1"}),
-        new Puzzle("5b1k/7P/6Q1/4p2n/5r2/2P5/6P1/2R3K1 b - - 2 49",
-            false,
-            new string[]{"f8c5","g1h2","f4h4"}),
-    };
     private int currentPuzzle = 0;
     private string[] currentMoves;
 
@@ -51,7 +38,7 @@ public class Board : MonoBehaviour
     private void Start()
     {
         instance = this;
-        SetupChessPuzzle(FEN_PUZZLES[currentPuzzle]);
+        SetupChessPuzzle();
     }
 
     // Update is called once per frame
@@ -214,15 +201,26 @@ public class Board : MonoBehaviour
     }
 
     // sets up the board with the given puzzle
-    private void SetupChessPuzzle(Puzzle FEN_PUZZLE)
+    private void SetupChessPuzzle()
     {
         activePieces = new List<GameObject>();
         chessPieces = new ChessPiece[8, 8];
 
-        FenParser.FenParser parser = new FenParser.FenParser(FEN_PUZZLE.fen);
-        isWhiteTurn = FEN_PUZZLE.isPlayerWhite;
-        isPlayerWhite = FEN_PUZZLE.isPlayerWhite;
-        currentMoves = FEN_PUZZLE.correctMoves;
+		// Retrieve new puzzle
+        HttpClient hc = new HttpClient();
+        Puzzle ActivePuzzle = hc.retrieveRandomPuzzle();
+
+        if(ActivePuzzle == null)
+        {
+            // TODO: Show error
+            Debug.Log("Error: Geen verbinding met API");
+            return;
+        }
+
+        FenParser.FenParser parser = new FenParser.FenParser(ActivePuzzle.fen);
+        isWhiteTurn = ActivePuzzle.isPlayerWhite;
+        isPlayerWhite = ActivePuzzle.isPlayerWhite;
+        currentMoves = ActivePuzzle.correctMoves;
 
 
         moveColor = GameObject.Find("MoveColor").GetComponent<Text>();
