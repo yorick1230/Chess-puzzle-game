@@ -1,6 +1,7 @@
 ﻿using Assets.scripts;
 using Assets.scripts.Model;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -12,6 +13,7 @@ public class Board : MonoBehaviour
     private bool[,] allowedMoves { set; get; }
     public ChessPiece[,] chessPieces { set; get; }
     private ChessPiece selectedPiece;
+    private bool animating = false;
 
     private const float TILE_SIZE = 1.0f;
     private const float TILE_OFFSET = 0.5f;
@@ -69,7 +71,7 @@ public class Board : MonoBehaviour
         // if computer's turn
         if(isPlayerWhite && !isWhiteTurn || !isPlayerWhite && isWhiteTurn)
         {
-            if (currentMoves.Count > 0)
+            if (currentMoves.Count > 0 && !animating)
             {
                 // convert coordinates to numbers and make computer move
                 Coordinate coord = convertCoordinates(currentMoves.ElementAt(0));
@@ -107,6 +109,27 @@ public class Board : MonoBehaviour
         BoardHighlights.Instance.HighlightAllowedMoves(allowedMoves);
     }
 
+    IEnumerator AnimatePieceTo(ChessPiece pieceToMove, int toX, int toY)
+    {
+        float speed = 2.0f;
+        Vector3 to = GetTileCenter(toX, toY);
+        animating = true;
+        while(pieceToMove != null && pieceToMove.transform.position != to)
+        {
+            float step = speed * Time.deltaTime;
+            pieceToMove.transform.position = Vector3.MoveTowards(pieceToMove.transform.position, to, step);
+
+            yield return null;
+        }
+        // done animating
+        if (currentMoves.Count > 0)
+        {
+            currentMoves.RemoveAt(0); // remove first move, since its already played on the board
+        }
+        animating = false;
+        StopAllCoroutines();
+    }
+
     // Moves a piece on the board (and captures if needed)
     private void MovePiece(int x, int y, bool computerMove = false)
     {
@@ -116,6 +139,7 @@ public class Board : MonoBehaviour
            
             if(computerMove || isCorrectMove(selectedPiece.CurrentX, selectedPiece.CurrentY, x, y))
             {
+
                 if (c != null && c.isWhite != isWhiteTurn)
                 {
                     // Capture a piece
@@ -123,19 +147,18 @@ public class Board : MonoBehaviour
                     Destroy(c.gameObject);
                 }
 
+                // start animating piece to new location
+                StartCoroutine(AnimatePieceTo(selectedPiece,x,y));
+
                 chessPieces[selectedPiece.CurrentX, selectedPiece.CurrentY] = null;
-                selectedPiece.transform.position = GetTileCenter(x, y);
                 selectedPiece.SetPosition(x, y);
                 chessPieces[x, y] = selectedPiece;
                 isWhiteTurn = !isWhiteTurn;
 
-                if(currentMoves.Count > 0)
-                {
-                    currentMoves.RemoveAt(0); // remove first move, since its already played on the board
-                }
-                if(!computerMove)
+                if (!computerMove)
                     Debug.Log("Correct!");
-            }else
+            }
+            else
             {
                 if (!computerMove)
                     Debug.Log("Incorrect, try again!");
@@ -213,9 +236,9 @@ public class Board : MonoBehaviour
         isPlayerWhite = parser.BoardStateData.ActivePlayerColor.ToLower() == "white" ? false : true; // First turn is computer
         isWhiteTurn = parser.BoardStateData.ActivePlayerColor.ToLower() == "white" ? true : false;
         currentMoves = ActivePuzzle.ForcedLine;
-        Debug.Log(String.Join(", ", currentMoves.ToArray()));
         currentMoves.Insert(0, ActivePuzzle.BlunderMove);
-        
+        Debug.Log(String.Join(", ", currentMoves.ToArray()));
+
 
         moveColor = GameObject.Find("MoveColor").GetComponent<Text>();
         moveColor.text = isPlayerWhite ? "White to move" : "Black to move";
@@ -287,8 +310,6 @@ public class Board : MonoBehaviour
         char[] columns = new char[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
         int fromX, fromY, toX, toY;
 
-        Debug.Log(coord);
-
         // Check if the move contains a 'x'
         if (coord.Substring(1, 1) == "x")
         {
@@ -313,6 +334,7 @@ public class Board : MonoBehaviour
             else
             {
                 // major piece
+                Debug.Log(coord);
                 ChessPiece piece = this.getMajorPiece(coord.Substring(0, 1), toX, toY);
                 fromX = piece.CurrentX;
                 fromY = piece.CurrentY;
@@ -360,7 +382,7 @@ public class Board : MonoBehaviour
                 {
                     toX = Array.IndexOf(columns, char.Parse(coord.Substring(1, 1)));
                     toY = Int32.Parse(coord.Substring(2, 1) + "") - 1;
-
+                    Debug.Log("beep: "+coord);
                     ChessPiece piece = this.getMajorPiece(coord.Substring(0, 1), toX, toY);
 
                     fromX = piece.CurrentX;
