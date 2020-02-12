@@ -355,6 +355,12 @@ public class Board : MonoBehaviour
                 else
                     fromY = toY + 1; 
 
+                // check if pawn is promoting
+                if(coord.Length > 2 && coord.Substring(2, 1) == "=")
+                {
+                    promotePawn(coord.Substring(3, 1), fromX, fromY);
+                }
+
                 // Check if pawn is moving 1 or 2 spaces
                 if (chessPieces[fromX, fromY] == null)
                 {
@@ -382,7 +388,6 @@ public class Board : MonoBehaviour
                 {
                     toX = Array.IndexOf(columns, char.Parse(coord.Substring(1, 1)));
                     toY = Int32.Parse(coord.Substring(2, 1) + "") - 1;
-                    Debug.Log("beep: "+coord);
                     ChessPiece piece = this.getMajorPiece(coord.Substring(0, 1), toX, toY);
 
                     fromX = piece.CurrentX;
@@ -392,6 +397,66 @@ public class Board : MonoBehaviour
         }
 
         return new Coordinate(fromX, fromY, toX, toY);
+    }
+
+    private void promotePawn(string pieceToPromoteTo, int x, int y)
+    {
+        List<ChessPiece> pawns = findChessPiecesWithType("pawn");
+        ChessPiece pawn = null;
+
+        foreach (ChessPiece piece in pawns)
+        {
+            if(piece.CurrentX == x && piece.CurrentY == y)
+            {
+                pawn = piece;
+            }
+        }
+
+        switch (pieceToPromoteTo)
+        {
+            case "Q": // queen
+                if (pawn.isWhite)
+                {
+                    SpawnChessPiece(1, x, y);
+                }
+                else
+                {
+                    SpawnChessPiece(7, x, y);
+                }
+                break;
+            case "R": // rook
+                if (pawn.isWhite)
+                {
+                    SpawnChessPiece(2, x, y);
+                }
+                else
+                {
+                    SpawnChessPiece(8, x, y);
+                }
+                break;
+            case "N": // knight
+                if (pawn.isWhite)
+                {
+                    SpawnChessPiece(4, x, y);
+                }
+                else
+                {
+                    SpawnChessPiece(10, x, y);
+                }
+                break;
+            default:
+                if (pawn.isWhite)
+                {
+                    SpawnChessPiece(1, x, y);
+                }
+                else
+                {
+                    SpawnChessPiece(7, x, y);
+                }
+                break;
+        }
+        activePieces.Remove(pawn.gameObject);
+        Destroy(pawn.gameObject);
     }
 
     // Finds coordinates for a major piece, since chess notation doesnt give the location
@@ -404,7 +469,7 @@ public class Board : MonoBehaviour
         majorPieceDict.Add("Q", "queen");
         majorPieceDict.Add("B", "bishop");
         majorPieceDict.Add("R", "rook");
-        
+
         List<ChessPiece> majorPieces = findChessPiecesWithType(majorPieceDict[pieceType]);
         foreach (ChessPiece piece in majorPieces)
         {
@@ -418,7 +483,7 @@ public class Board : MonoBehaviour
                         break;
                     }else
                     {
-                        if(attacker.CurrentX == fromX)
+                        if(piece.CurrentX == fromX)
                         {
                             attacker = piece;
                             break;
